@@ -2,6 +2,8 @@ import langchain
 import os
 from dotenv import load_dotenv
 from langchain_experimental.text_splitter import SemanticChunker
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
 from langchain.document_loaders import PyPDFLoader
 from langchain.schema import Document
 from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
@@ -10,6 +12,13 @@ from langchain.chains import RetrievalQA
 from langchain.vectorstores import Chroma
 from langchain.schema import Document
 
+
+class TextSplitter:
+    def recursive(self,chunk_size: int, chunk_overlap: int):
+        return RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap, separators=["\n\n", "\n", " "])
+    def semantic(self, embeddings):
+        return SemanticChunker(embeddings)
+    
 
 load_dotenv()
 
@@ -59,21 +68,18 @@ documents = loader.load()
 # Optionally, print the content of the parsed documents
 for doc in documents:
     print(doc.page_content)
-    
-# semantic chunking
-# Initialize the embedding model (e.g., OpenAI embeddings)
-embeddings = semantic_chunker
 
-# Define the SemanticChunker with the embedding model
-semantic_chunker = SemanticChunker(embeddings)
+text_splitter_recursive = TextSplitter().recursive(chunk_size=500, chunk_overlap=50)
+text_splitter_semantic = TextSplitter().semantic(semantic_chunker)
 
-# Apply the SemanticChunker to split the documents
+
+# split the documents
 split_documents = []
 i = 0
 for doc in documents:
     i+=1
     print(i)
-    chunks = semantic_chunker.split_text(doc.page_content)
+    chunks = text_splitter_recursive.split_text(doc.page_content)
     split_documents.extend([Document(page_content=chunk) for chunk in chunks])
     if i == 5:
         break
@@ -83,7 +89,7 @@ for chunk in split_documents:
     print(chunk.page_content)
 
 # Index the documents
-chroma.add_documents(documents)
+chroma.add_documents(split_documents)
 
 # Define the prompt
 prompt = "Write a summary of the documents."
