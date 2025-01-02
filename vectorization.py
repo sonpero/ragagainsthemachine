@@ -5,9 +5,10 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 from langchain.document_loaders import PyPDFLoader
 from langchain.schema import Document
-from langchain_openai import AzureChatOpenAI, AzureOpenAIEmbeddings
 
 from langchain.vectorstores import Chroma
+
+import config as config
 
 
 # class to define the split method
@@ -24,90 +25,77 @@ class TextSplitter:
         return SemanticChunker(embeddings)
 
 
-# loading secrets
-load_dotenv()
+class Vectorizer:
+    def __init__(self, pdf_document_path, text_splitter, persist_directory):
+        self.pdf_document_path = pdf_document_path
+        self.book_name = self.pdf_document_path.split("/")[-1].split(".")[0]
+        self.text_splitter = text_splitter
+        self.persist_directory = persist_directory
+        self.documents = None
+        self.splitter = None
+        self.split_documents = None
 
-# set LLM config for embedding
-embedding_3_small = "text-embedding-3-small"
-api_version = "2024-02-15-preview"
+    def run(self):
+        self.load_documents()
+        self.split_the_documents()
+        self.index_and_store_documents()
+    
+    def load_documents(self):
+        loader = PyPDFLoader(self.pdf_document_path)
+        self.documents = loader.load()
+    
+    def split_the_documents(self, mode="recursive"):
+        if mode == "recursive":
+            self.splitter = self.text_splitter.recursive(chunk_size=500, chunk_overlap=50)
+        elif mode == "semantic":
+            self.splitter = self.text_splitter.semantic(config.embedded_model)
 
-ada_002 = "text-embedding-ada-002"
-azure_deployment_llm = "gpt-4-32k-last"
-azure_deployment_llm_prev = "gpt-4-32k"
-azure_deployment_version = "2023-07-01-preview"
+        split_documents = []
+        i = 0
+        for doc in self.documents:
+            i += 1
+            chunks = self.splitter.split_text(doc.page_content)
+            chunks_counter = 0
+            for chunk in chunks:
+                chunks_counter += 1
+                split_documents.append(
+                    Document(
+                        page_content=chunk,
+                        metadata={"page": i, 
+                                  "chunk": chunks_counter, 
+                                  "book_name": self.book_name},
+                    )
+                )
 
-# define embedded_model
-embedded_model = AzureOpenAIEmbeddings(
-    azure_deployment=embedding_3_small,
-    openai_api_version=azure_deployment_version,
-)
+        self.split_documents = split_documents
 
-# Define the LLM used for the query
-llm = AzureChatOpenAI(
-    azure_deployment="gpt-4-32k-last",
-    openai_api_version="2023-07-01-preview",
-)
+    def index_and_store_documents(self):
+        chroma = Chroma(embedding_function=config.embedded_model, persist_directory=self.persist_directory)
+        # Index the documents
+        batch_size = 10
+        split_batches = [
+            self.split_documents[i : i + batch_size]
+            for i in range(0, len(self.split_documents), batch_size)
+        ]
+        for batch in split_batches:
+            chroma.add_documents(batch)
+            time.sleep(1)
 
-# PDF Parsing using Langchain
-# Define the PDF file path
-pdf_file = "/Users/alex/Documents/VSCode_project/ragagainsthemachine/Clean Code Principles And Patterns Python Edition (Petri Silén).pdf"
-book_name = pdf_file.split("/")[-1].split(".")[0]
-
-# Parse the PDF using PyPDFLoader
-loader = PyPDFLoader(pdf_file)
-documents = loader.load()
-
-# Optionally, print the content of the parsed documents
-for doc in documents:
-    print(doc.page_content)
-    break
-
-# Define the text splitter
-text_splitter_recursive = TextSplitter().recursive(chunk_size=500, chunk_overlap=50)
-# text_splitter_semantic = TextSplitter().semantic(embedded_model)
-
-# split the documents
-split_documents = []
-i = 0
-for doc in documents:
-    i += 1
-    print(i)
-    chunks = text_splitter_recursive.split_text(doc.page_content)
-    chunks_counter = 0
-    for chunk in chunks:
-        chunks_counter += 1
-        split_documents.append(
-            Document(
-                page_content=chunk,
-                metadata={
-                    "page_number": doc.metadata.get("page_number", i),
-                    "chunk_index": chunks_counter,
-                    "book_name": book_name,
-                },
-            )
-        )
+        # Persist the Chroma vector store
+        chroma.persist()
 
 
-# Optionally, print the chunked documents
-for chunk in split_documents:
-    print("--- Chunk ---")
-    print(chunk.page_content)
-    print("Metadata:", chunk.metadata)
-    break
+if __name__ == "__main__":
+    # loading secrets
+    load_dotenv()
+    text_splitter = TextSplitter()
 
-# Initialize embeddings and Chroma vector store
-persist_directory = "./chroma_persistence"
-chroma = Chroma(embedding_function=embedded_model, persist_directory=persist_directory)
+    # Define the PDF file path
+    pdf_file = "/Users/alex/Documents/VSCode_project/ragagainsthemachine/clapnq_corpus.pdf"
 
-# Index the documents
-batch_size = 10
-split_batches = [
-    split_documents[i : i + batch_size]
-    for i in range(0, len(split_documents), batch_size)
-]
-for batch in split_batches:
-    chroma.add_documents(batch)
-    time.sleep(1)
 
-# Persist the Chroma vector store
-chroma.persist()
+    # run the vectorizer
+    print("Vectorization started")
+    vectorizer = Vectorizer(pdf_file, text_splitter, "./chroma_persistence/clapnq")
+    vectorizer.run()
+    print("Vectorization complete")
