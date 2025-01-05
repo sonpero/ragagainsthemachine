@@ -39,14 +39,16 @@ class Vectorizer:
         self.load_documents()
         self.split_the_documents()
         self.index_and_store_documents()
-    
+
     def load_documents(self):
         loader = PyPDFLoader(self.pdf_document_path)
         self.documents = loader.load()
-    
+
     def split_the_documents(self, mode="recursive"):
         if mode == "recursive":
-            self.splitter = self.text_splitter.recursive(chunk_size=500, chunk_overlap=50)
+            self.splitter = self.text_splitter.recursive(
+                chunk_size=500, chunk_overlap=50
+            )
         elif mode == "semantic":
             self.splitter = self.text_splitter.semantic(config.embedded_model)
 
@@ -61,16 +63,21 @@ class Vectorizer:
                 split_documents.append(
                     Document(
                         page_content=chunk,
-                        metadata={"page": i, 
-                                  "chunk": chunks_counter, 
-                                  "book_name": self.book_name},
+                        metadata={
+                            "page": i,
+                            "chunk": chunks_counter,
+                            "book_name": self.book_name,
+                        },
                     )
                 )
 
         self.split_documents = split_documents
 
     def index_and_store_documents(self):
-        chroma = Chroma(embedding_function=config.embedded_model, persist_directory=self.persist_directory)
+        chroma = Chroma(
+            embedding_function=config.embedded_model,
+            persist_directory=self.persist_directory,
+        )
         # Index the documents
         batch_size = 10
         split_batches = [
@@ -91,8 +98,9 @@ if __name__ == "__main__":
     text_splitter = TextSplitter()
 
     # Define the PDF file path
-    pdf_file = "/Users/alex/Documents/VSCode_project/ragagainsthemachine/clapnq_corpus.pdf"
-
+    pdf_file = (
+        "/Users/alex/Documents/VSCode_project/ragagainsthemachine/clapnq_corpus.pdf"
+    )
 
     # run the vectorizer
     print("Vectorization started")
