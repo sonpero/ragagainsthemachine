@@ -35,18 +35,22 @@ azure_config = {
     "embedding_name": "text-embedding-3-small",  # your embedding name
 }
 
-evaluator_llm = LangchainLLMWrapper(AzureChatOpenAI(
-    openai_api_version="2023-07-01-preview",
-    azure_endpoint=azure_config["base_url"],
-    azure_deployment=azure_config["model_deployment"],
-    model=azure_config["model_name"],
-    validate_base_url=False,
-))
+evaluator_llm = LangchainLLMWrapper(
+    AzureChatOpenAI(
+        openai_api_version="2023-07-01-preview",
+        azure_endpoint=azure_config["base_url"],
+        azure_deployment=azure_config["model_deployment"],
+        model=azure_config["model_name"],
+        validate_base_url=False,
+    )
+)
 
 # init the embeddings for answer_relevancy, answer_correctness and answer_similarity
-evaluator_embeddings = LangchainEmbeddingsWrapper(AzureOpenAIEmbeddings(
-    openai_api_version="2023-07-01-preview",
-    azure_endpoint=azure_config["base_url"],
-    azure_deployment=azure_config["embedding_deployment"],
-    model=azure_config["embedding_name"],
-))
+evaluator_embeddings = LangchainEmbeddingsWrapper(
+    AzureOpenAIEmbeddings(
+        openai_api_version="2023-07-01-preview",
+        azure_endpoint=azure_config["base_url"],
+        azure_deployment=azure_config["embedding_deployment"],
+        model=azure_config["embedding_name"],
+    )
+)

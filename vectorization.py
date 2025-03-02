@@ -35,9 +35,9 @@ class Vectorizer:
         self.splitter = None
         self.split_documents = None
 
-    def run(self):
+    def run(self, chunking_mode="recursive"):
         self.load_documents()
-        self.split_the_documents()
+        self.split_the_documents(chunking_mode)
         self.index_and_store_documents()
 
     def load_documents(self):
@@ -104,6 +104,6 @@ if __name__ == "__main__":
 
     # run the vectorizer
     print("Vectorization started")
-    vectorizer = Vectorizer(pdf_file, text_splitter, "./chroma_persistence/clapnq")
-    vectorizer.run()
+    vectorizer = Vectorizer(pdf_file, text_splitter, "./chroma_persistence/clapnq_semantic")
+    vectorizer.run('semantic')
     print("Vectorization complete")
