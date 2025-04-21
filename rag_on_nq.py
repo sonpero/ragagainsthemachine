@@ -8,13 +8,13 @@ from ragas import SingleTurnSample, EvaluationDataset
 from ragas.metrics import (
     # LLMContextRecall,
     # Faithfulness,
-    # FactualCorrectness,
+    FactualCorrectness,
     SemanticSimilarity,
 )
 from ragas import evaluate
 
 # Initialize embeddings and Chroma vector store
-persist_directory = "./chroma_persistence/clapnq"
+persist_directory = "./chroma_persistence/clapnq_semantic"
 chroma = Chroma(
     embedding_function=config.embedded_model, persist_directory=persist_directory
 )
@@ -101,7 +101,7 @@ dataset = EvaluationDataset(samples=samples)
 # Evaluate the LLM response using ragas
 metrics = [
     # LLMContextRecall(llm=config.evaluator_llm),
-    # FactualCorrectness(llm=config.evaluator_llm),
+    FactualCorrectness(llm=config.evaluator_llm),
     # Faithfulness(llm=config.evaluator_llm),
     SemanticSimilarity(embeddings=config.evaluator_embeddings),
 ]
@@ -113,6 +113,7 @@ pd.set_option("display.max_columns", None)
 pd.set_option("display.max_rows", None)
 pd.set_option("display.max_colwidth", None)
 print(df.semantic_similarity.mean())
+print(df.factual_correctness.mean())
 print("this is the end")
 
 # todo : create a function to retrieve the documents
